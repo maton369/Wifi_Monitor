@@ -1,5 +1,13 @@
 // WiFi混雑度モニターアプリケーション
 
+const STORAGE_KEYS = {
+    data: 'wifiMonitorData',
+    networks: 'wifiNetworks',
+    currentWifi: 'currentWifi',
+    wasMonitoring: 'wifiMonitorWasMonitoring',
+    autoResumeEnabled: 'wifiMonitorAutoResumeEnabled'
+};
+
 class WiFiMonitor {
     constructor() {
         this.data = [];
@@ -9,13 +17,15 @@ class WiFiMonitor {
         this.monitorInterval = null;
         this.loadData();
         this.loadWifiNetworks();
+        this.loadSettings();
         this.initUI();
         this.updateDisplay();
+        this.maybeAutoResumeMonitoring();
     }
 
     // ローカルストレージからデータを読み込み
     loadData() {
-        const saved = localStorage.getItem('wifiMonitorData');
+        const saved = localStorage.getItem(STORAGE_KEYS.data);
         if (saved) {
             this.data = JSON.parse(saved);
         }
@@ -23,29 +33,51 @@ class WiFiMonitor {
 
     // WiFiネットワークリストを読み込み
     loadWifiNetworks() {
-        const saved = localStorage.getItem('wifiNetworks');
+        const saved = localStorage.getItem(STORAGE_KEYS.networks);
         if (saved) {
             this.wifiNetworks = JSON.parse(saved);
         }
 
         // 最後に選択していたWiFiを復元
-        const lastWifi = localStorage.getItem('currentWifi');
+        const lastWifi = localStorage.getItem(STORAGE_KEYS.currentWifi);
         if (lastWifi && this.wifiNetworks.includes(lastWifi)) {
             this.currentWifi = lastWifi;
         }
     }
 
+    // 設定を読み込み
+    loadSettings() {
+        const savedAutoResume = localStorage.getItem(STORAGE_KEYS.autoResumeEnabled);
+        // 未設定ならON（要件: 自動再開する）
+        this.autoResumeEnabled = savedAutoResume === null ? true : savedAutoResume === 'true';
+    }
+
     // ローカルストレージにデータを保存
     saveData() {
-        localStorage.setItem('wifiMonitorData', JSON.stringify(this.data));
+        localStorage.setItem(STORAGE_KEYS.data, JSON.stringify(this.data));
     }
 
     // WiFiネットワークリストを保存
     saveWifiNetworks() {
-        localStorage.setItem('wifiNetworks', JSON.stringify(this.wifiNetworks));
+        localStorage.setItem(STORAGE_KEYS.networks, JSON.stringify(this.wifiNetworks));
         if (this.currentWifi) {
-            localStorage.setItem('currentWifi', this.currentWifi);
+            localStorage.setItem(STORAGE_KEYS.currentWifi, this.currentWifi);
         }
+    }
+
+    // 自動再開ON/OFF
+    setAutoResumeEnabled(enabled) {
+        this.autoResumeEnabled = !!enabled;
+        localStorage.setItem(STORAGE_KEYS.autoResumeEnabled, this.autoResumeEnabled ? 'true' : 'false');
+    }
+
+    // 前回測定中だったか（ブラウザ終了時にstopMonitoringが呼ばれないケースも含めて保持）
+    setWasMonitoring(wasMonitoring) {
+        localStorage.setItem(STORAGE_KEYS.wasMonitoring, wasMonitoring ? 'true' : 'false');
+    }
+
+    getWasMonitoring() {
+        return localStorage.getItem(STORAGE_KEYS.wasMonitoring) === 'true';
     }
 
     // UI初期化
@@ -55,6 +87,31 @@ class WiFiMonitor {
         document.getElementById('clearBtn').addEventListener('click', () => this.clearData());
         document.getElementById('addWifiBtn').addEventListener('click', () => this.addWifiNetwork());
         document.getElementById('wifiSelect').addEventListener('change', (e) => this.selectWifi(e.target.value));
+
+        // 自動再開トグル
+        const autoResumeChk = document.getElementById('autoResumeChk');
+        if (autoResumeChk) {
+            autoResumeChk.checked = this.autoResumeEnabled;
+            autoResumeChk.addEventListener('change', (e) => this.setAutoResumeEnabled(e.target.checked));
+        }
+
+        // エクスポート/インポート（JSON）
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportDataToFile());
+        }
+
+        const importBtn = document.getElementById('importBtn');
+        const importFileInput = document.getElementById('importFileInput');
+        if (importBtn && importFileInput) {
+            importBtn.addEventListener('click', () => importFileInput.click());
+            importFileInput.addEventListener('change', async (e) => {
+                const file = e.target.files && e.target.files[0];
+                await this.importDataFromFile(file);
+                // 同じファイルを連続で選べるようにリセット
+                e.target.value = '';
+            });
+        }
 
         this.updateWifiSelector();
     }
@@ -105,13 +162,13 @@ class WiFiMonitor {
             this.currentWifi = null;
         } else {
             this.currentWifi = wifiName;
-            localStorage.setItem('currentWifi', wifiName);
+            localStorage.setItem(STORAGE_KEYS.currentWifi, wifiName);
         }
         this.updateDisplay();
     }
 
     // 測定開始
-    startMonitoring() {
+    startMonitoring(isAutoStart = false) {
         if (!this.currentWifi) {
             alert('WiFiを選択または追加してください。');
             return;
@@ -120,6 +177,8 @@ class WiFiMonitor {
         if (this.isMonitoring) return;
 
         this.isMonitoring = true;
+        // ブラウザを閉じても次回起動時に再開できるよう状態を保存
+        this.setWasMonitoring(true);
         this.measureNow();
 
         // 5分ごとに測定
@@ -139,12 +198,24 @@ class WiFiMonitor {
     // 測定停止
     stopMonitoring() {
         this.isMonitoring = false;
+        this.setWasMonitoring(false);
         if (this.monitorInterval) {
             clearInterval(this.monitorInterval);
             this.monitorInterval = null;
         }
         document.getElementById('startBtn').textContent = '測定開始';
         document.getElementById('startBtn').disabled = false;
+    }
+
+    // 起動時に自動で測定を再開（前回が測定中だった場合）
+    maybeAutoResumeMonitoring() {
+        if (!this.autoResumeEnabled) return;
+        if (!this.currentWifi) return;
+        if (this.isMonitoring) return;
+        if (!this.getWasMonitoring()) return;
+
+        // 前回「測定中」だったなら自動的に測定開始
+        this.startMonitoring(true);
     }
 
     // 即座に測定
@@ -450,6 +521,153 @@ class WiFiMonitor {
                 </tr>
             `;
         }).join('');
+    }
+
+    // JSONとしてデータを書き出し（ローカルに保存）
+    exportDataToFile() {
+        const payload = {
+            schemaVersion: 1,
+            exportedAt: new Date().toISOString(),
+            wifiNetworks: this.wifiNetworks,
+            currentWifi: this.currentWifi,
+            data: this.data
+        };
+
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+        const filename = `wifi-monitor-backup-${ts}.json`;
+
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    // JSONファイルからデータを読み込み（ブラウザから選択）
+    async importDataFromFile(file) {
+        if (!file) return;
+
+        let text;
+        try {
+            text = await file.text();
+        } catch (e) {
+            alert('ファイルの読み込みに失敗しました。別のブラウザでお試しください。');
+            return;
+        }
+
+        let imported;
+        try {
+            imported = JSON.parse(text);
+        } catch (e) {
+            alert('JSONの形式が正しくありません。');
+            return;
+        }
+
+        let importedData = [];
+        let importedNetworks = [];
+        let importedCurrentWifi = null;
+
+        if (Array.isArray(imported)) {
+            importedData = imported;
+        } else if (imported && typeof imported === 'object') {
+            if (Array.isArray(imported.data)) importedData = imported.data;
+            if (Array.isArray(imported.wifiNetworks)) importedNetworks = imported.wifiNetworks;
+            if (typeof imported.currentWifi === 'string') importedCurrentWifi = imported.currentWifi;
+        } else {
+            alert('読み込んだJSONが想定フォーマットではありません。');
+            return;
+        }
+
+        const normalized = importedData
+            .map((d) => this.normalizeMeasurement(d))
+            .filter(Boolean);
+
+        if (normalized.length === 0) {
+            alert('読み込めるデータがありませんでした（フォーマット不一致）。');
+            return;
+        }
+
+        const shouldMerge = confirm(
+            `「${file.name}」を読み込みます。\n\n既存データに追加（マージ）しますか？\nOK: 追加（マージ）\nキャンセル: 置き換え`
+        );
+
+        const combined = shouldMerge ? [...this.data, ...normalized] : [...normalized];
+        const deduped = this.dedupeAndSortMeasurements(combined);
+
+        // 直近1000件のみ保持（全WiFi合算）
+        this.data = deduped.length > 1000 ? deduped.slice(-1000) : deduped;
+
+        // WiFiリストを更新（インポート側のwifiNetworks + データ内wifiName）
+        const fromData = Array.from(new Set(normalized.map((d) => d.wifiName)));
+        const mergedNetworks = new Set(
+            [...(this.wifiNetworks || []), ...(importedNetworks || []), ...fromData]
+                .map((w) => String(w).trim())
+                .filter(Boolean)
+        );
+        this.wifiNetworks = Array.from(mergedNetworks);
+
+        // currentWifiは、未選択ならインポート側を採用（上書きはしない）
+        if (!this.currentWifi && importedCurrentWifi && this.wifiNetworks.includes(importedCurrentWifi)) {
+            this.currentWifi = importedCurrentWifi;
+            localStorage.setItem(STORAGE_KEYS.currentWifi, importedCurrentWifi);
+        }
+
+        this.saveData();
+        this.saveWifiNetworks();
+        this.updateWifiSelector();
+        this.updateDisplay();
+
+        alert(`読み込み完了: ${normalized.length}件（有効）`);
+    }
+
+    // 測定レコードの正規化（インポート用）
+    normalizeMeasurement(raw) {
+        if (!raw || typeof raw !== 'object') return null;
+        const wifiName = String(raw.wifiName ?? '').trim();
+        const timestamp = String(raw.timestamp ?? '').trim();
+        if (!wifiName || !timestamp) return null;
+
+        const date = new Date(timestamp);
+        if (isNaN(date.getTime())) return null;
+
+        const downlink = Number(raw.downlink ?? 0) || 0;
+        const rtt = Number(raw.rtt ?? 0) || 0;
+        const effectiveType = raw.effectiveType ? String(raw.effectiveType) : 'unknown';
+
+        const dayOfWeek = Number.isInteger(raw.dayOfWeek) ? raw.dayOfWeek : date.getDay();
+        const hour = Number.isInteger(raw.hour) ? raw.hour : date.getHours();
+
+        let congestion = typeof raw.congestion === 'number' ? raw.congestion : this.calculateCongestion(downlink, rtt);
+        congestion = Math.max(0, Math.min(100, congestion));
+
+        return {
+            timestamp: date.toISOString(),
+            wifiName,
+            dayOfWeek,
+            hour,
+            effectiveType,
+            downlink,
+            rtt,
+            congestion
+        };
+    }
+
+    // 重複排除して時系列ソート（wifiName + timestamp で重複判定）
+    dedupeAndSortMeasurements(measurements) {
+        const sorted = [...measurements].sort((a, b) => String(a.timestamp).localeCompare(String(b.timestamp)));
+        const map = new Map();
+        sorted.forEach((d) => {
+            if (!d || !d.wifiName || !d.timestamp) return;
+            const key = `${d.wifiName}::${d.timestamp}`;
+            map.set(key, d);
+        });
+        return Array.from(map.values()).sort((a, b) => String(a.timestamp).localeCompare(String(b.timestamp)));
     }
 
     // データをクリア

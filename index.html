@@ -205,6 +205,12 @@
                 <div style="font-size: 0.9em; color: #666;">
                     💡 まず「新しいWiFiを追加」ボタンで、現在接続中のWiFi名を登録してください
                 </div>
+                <div style="margin-top: 10px; font-size: 0.9em; color: #333;">
+                    <label style="cursor: pointer;">
+                        <input type="checkbox" id="autoResumeChk" checked style="margin-right: 6px;">
+                        次回起動時に自動で測定を再開する（前回「測定中」だった場合）
+                    </label>
+                </div>
             </div>
 
             <div class="status-grid">
@@ -234,6 +240,9 @@
                 <button class="btn" id="startBtn">測定開始</button>
                 <button class="btn" id="stopBtn">測定停止</button>
                 <button class="btn btn-danger" id="clearBtn">データクリア</button>
+                <button class="btn" id="exportBtn">💾 データ保存（JSON）</button>
+                <button class="btn" id="importBtn">📂 データ読み込み（JSON）</button>
+                <input type="file" id="importFileInput" accept=".json,application/json" style="display:none">
             </div>
         </div>
 
