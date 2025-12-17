@@ -211,6 +211,15 @@
                         次回起動時に自動で測定を再開する（前回「測定中」だった場合）
                     </label>
                 </div>
+                <div style="margin-top: 8px; font-size: 0.9em; color: #333;">
+                    <label style="cursor: pointer;">
+                        <input type="checkbox" id="autoBackupChk" checked style="margin-right: 6px;">
+                        測定停止/ WiFi切替時に自動でバックアップ保存（JSONをダウンロード）
+                    </label>
+                    <div style="margin-top: 4px; font-size: 0.85em; color: #666;">
+                        ※ ブラウザの仕様上「ローカル保存」はダウンロードとして行われます
+                    </div>
+                </div>
             </div>
 
             <div class="status-grid">
@@ -230,6 +239,9 @@
                     <div class="status-label">混雑度</div>
                     <div class="status-value" id="congestion">-</div>
                 </div>
+            </div>
+            <div id="connectionStatus" style="margin-top: 8px; font-size: 0.9em; color: #666;">
+                オンライン状態: -
             </div>
 
             <div class="congestion-indicator">
