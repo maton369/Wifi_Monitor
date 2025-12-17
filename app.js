@@ -436,8 +436,16 @@ class WiFiMonitor {
 
             const bar = document.getElementById('congestionBar');
             bar.style.width = '0%';
+            bar.title = '混雑度（推定）: 速度（downlink）と遅延（RTT）から算出。値が大きいほど混雑（時間の進捗ではありません）。';
+            bar.setAttribute('role', 'progressbar');
+            bar.setAttribute('aria-valuemin', '0');
+            bar.setAttribute('aria-valuemax', '100');
+            bar.setAttribute('aria-valuenow', '0');
             const text = document.getElementById('congestionText');
-            if (text) text.textContent = '0%';
+            if (text) {
+                text.textContent = '0%';
+                text.title = bar.title;
+            }
             return;
         }
 
@@ -454,8 +462,16 @@ class WiFiMonitor {
         const bar = document.getElementById('congestionBar');
         bar.style.width = congestion + '%';
         bar.style.backgroundColor = congestionLevel.color;
+        bar.title = '混雑度（推定）: 速度（downlink）と遅延（RTT）から算出。値が大きいほど混雑（時間の進捗ではありません）。';
+        bar.setAttribute('role', 'progressbar');
+        bar.setAttribute('aria-valuemin', '0');
+        bar.setAttribute('aria-valuemax', '100');
+        bar.setAttribute('aria-valuenow', String(Math.round(congestion)));
         const text = document.getElementById('congestionText');
-        if (text) text.textContent = Math.round(congestion) + '%';
+        if (text) {
+            text.textContent = Math.round(congestion) + '%';
+            text.title = bar.title;
+        }
     }
 
     // 混雑度レベルを取得

@@ -93,6 +93,13 @@
             user-select: none;
         }
 
+        .hint {
+            margin-top: 8px;
+            font-size: 0.85em;
+            color: #666;
+            line-height: 1.4;
+        }
+
         .btn {
             background: #667eea;
             color: white;
@@ -246,7 +253,7 @@
                     <div class="status-value" id="rtt">-</div>
                 </div>
                 <div class="status-item">
-                    <div class="status-label">混雑度</div>
+                    <div class="status-label">混雑度（推定）</div>
                     <div class="status-value" id="congestion">-</div>
                 </div>
             </div>
@@ -257,6 +264,9 @@
             <div class="congestion-indicator">
                 <div class="congestion-bar" id="congestionBar"></div>
                 <div class="congestion-text" id="congestionText">0%</div>
+            </div>
+            <div class="hint">
+                ※ このバーは<strong>混雑度（推定）</strong>を表します（時間の進捗ではありません）。速度（downlink）と遅延（RTT）から算出し、数値が大きいほど混雑しています。
             </div>
 
             <div style="margin-top: 20px;">
