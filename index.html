@@ -76,11 +76,21 @@
         .congestion-bar {
             height: 100%;
             transition: width 0.5s, background-color 0.5s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
+            position: absolute;
+            left: 0;
+            top: 0;
+            border-radius: 20px;
+        }
+
+        .congestion-text {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
             font-weight: bold;
+            color: #333;
+            z-index: 2;
+            user-select: none;
         }
 
         .btn {
@@ -245,7 +255,8 @@
             </div>
 
             <div class="congestion-indicator">
-                <div class="congestion-bar" id="congestionBar">0%</div>
+                <div class="congestion-bar" id="congestionBar"></div>
+                <div class="congestion-text" id="congestionText">0%</div>
             </div>
 
             <div style="margin-top: 20px;">

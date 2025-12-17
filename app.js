@@ -436,7 +436,8 @@ class WiFiMonitor {
 
             const bar = document.getElementById('congestionBar');
             bar.style.width = '0%';
-            bar.textContent = '0%';
+            const text = document.getElementById('congestionText');
+            if (text) text.textContent = '0%';
             return;
         }
 
@@ -453,7 +454,8 @@ class WiFiMonitor {
         const bar = document.getElementById('congestionBar');
         bar.style.width = congestion + '%';
         bar.style.backgroundColor = congestionLevel.color;
-        bar.textContent = Math.round(congestion) + '%';
+        const text = document.getElementById('congestionText');
+        if (text) text.textContent = Math.round(congestion) + '%';
     }
 
     // 混雑度レベルを取得
