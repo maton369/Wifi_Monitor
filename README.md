@@ -12,6 +12,9 @@
 - **開発**: HTML / CSS / JavaScript（Vanilla JS, ES6+）  
 - **データ保存**: 端末内（`localStorage`）のみ（サーバー送信なし）
 
+<img width="1994" height="3288" alt="127 0 0 1_3004_index html_serverWindowId=79e437aa-68ac-4467-8569-a8cc0d1f1347" src="https://github.com/user-attachments/assets/dbd69b76-1037-4bf3-a295-13763c8dfd1c" />
+
+
 ---
 
 ## 主な機能
