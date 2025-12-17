@@ -145,7 +145,6 @@
 wifi-congestion-analyzer/
 ├── index.html            # メインUI（アプリ本体）
 ├── app.js                # アプリケーションロジック
-├── PROJECT_OVERVIEW.md   # 仕様・背景（プロジェクト概要）
 └── README.md             # 使い方・技術概要（本ドキュメント）
 ```
 
